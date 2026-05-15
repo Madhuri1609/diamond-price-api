@@ -1,1 +1,49 @@
+name: Deploy ML API
 
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build Docker Image
+      run: |
+        docker build -t diamond-api .
+
+    - name: Tag Docker Image
+      run: |
+        docker tag diamond-api:latest 687848808647.dkr.ecr.ap-south-1.amazonaws.com/diamond-api:latest
+
+    - name: Push Docker Image
+      run: |
+        docker push 687848808647.dkr.ecr.ap-south-1.amazonaws.com/diamond-api:latest
+
+    - name: Deploy on EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          sudo docker pull 687848808647.dkr.ecr.ap-south-1.amazonaws.com/diamond-api:latest
+          sudo docker stop diamond-container || true
+          sudo docker rm diamond-container || true
+          sudo docker run -d --name diamond-container -p 8000:8000 687848808647.dkr.ecr.ap-south-1.amazonaws.com/diamond-api:latest
