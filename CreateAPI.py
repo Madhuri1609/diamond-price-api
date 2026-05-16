@@ -4,7 +4,7 @@ import pandas as pd
 import joblib
 
 # Load Model
-model = joblib.load("diamond_price_model_1.pkl")
+model = joblib.load("diamond_price_model.pkl")
 
 # Create App
 app = FastAPI()
